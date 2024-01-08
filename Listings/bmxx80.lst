@@ -1,0 +1,448 @@
+C51 COMPILER V9.59.0.0   BMXX80                                                            01/05/2024 10:04:35 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE BMXX80
+OBJECT MODULE PLACED IN .\Objects\bmxx80.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE bmxx80.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\OldDIYClock-master) DEBUG OB
+                    -JECTEXTEND PRINT(.\Listings\bmxx80.lst) TABS(2) OBJECT(.\Objects\bmxx80.obj)
+
+line level    source
+
+   1          #include "bmxx80.h"
+   2          #include "i2c.h"
+   3          #include "delay.h"
+   4          #include "sys.h"
+   5          
+   6          bmp180CalData cd;
+   7          bmx280CalData cd2;
+   8          
+   9          uint8_t bmxx80_Address = BMXX80_ADDR0;
+  10          uint8_t bmxx80Sensor = BMP_NONE;
+  11          int16_t temperature = 0;
+  12          int16_t pressure = 0;
+  13          int16_t humidity = 0;
+  14          
+  15          int32_t t_fine;
+  16          float ftemp;
+  17          
+  18          void bmxx80write8(uint8_t reg, uint8_t value)
+  19          {
+  20   1        I2CswStart(bmxx80_Address);
+  21   1        I2CswWriteByte(reg);
+  22   1        I2CswWriteByte(value);
+  23   1        I2CswStop();
+  24   1      
+  25   1        return;
+  26   1      }
+  27          
+  28          uint8_t bmxx80read8(uint8_t reg)
+  29          {
+  30   1        uint8_t result;
+  31   1      
+  32   1        I2CswStart(bmxx80_Address);
+  33   1        I2CswWriteByte(reg);
+  34   1        I2CswStart(bmxx80_Address | I2C_READ);
+  35   1        result = I2CswReadByte(I2C_NOACK);
+  36   1        I2CswStop();
+  37   1      
+  38   1        return result;
+  39   1      }
+  40          
+  41          uint16_t bmxx80read16(uint8_t reg)
+  42          {
+  43   1        uint16_t result;
+  44   1      
+  45   1        I2CswStart(bmxx80_Address);
+  46   1        I2CswWriteByte(reg);
+  47   1        I2CswStart(bmxx80_Address | I2C_READ);
+  48   1        result = ((uint16_t)I2CswReadByte(I2C_ACK)) << 8;
+  49   1        result |= I2CswReadByte(I2C_NOACK);
+  50   1        I2CswStop();
+  51   1      
+  52   1        return result;
+  53   1      }
+  54          
+C51 COMPILER V9.59.0.0   BMXX80                                                            01/05/2024 10:04:35 PAGE 2   
+
+  55          #ifndef _TEST_LE_
+  56          uint16_t bmxx80read16_LE(uint8_t reg)
+  57          {
+  58   1        uint16_t result;
+  59   1      
+  60   1        I2CswStart(bmxx80_Address);
+  61   1        I2CswWriteByte(reg);
+  62   1        I2CswStart(bmxx80_Address | I2C_READ);
+  63   1        result = I2CswReadByte(I2C_ACK);
+  64   1        result |= ((uint16_t)I2CswReadByte(I2C_NOACK)) << 8;
+  65   1        I2CswStop();
+  66   1      
+  67   1        return result;
+  68   1      }
+  69          #else
+              
+              uint16_t bmxx80read16_LE(uint8_t reg)
+              {
+                uint16_t result = bmxx80read16(reg);
+              
+                return (result >> 8) | (result << 8);
+              }
+              #endif
+  78          
+  79          int16_t bmxx80readS16(uint8_t reg)
+  80          {
+  81   1        return (int16_t)bmxx80read16(reg);
+  82   1      }
+  83          
+  84          int16_t bmxx80readS16_LE(uint8_t reg)
+  85          {
+  86   1        return (int16_t)bmxx80read16_LE(reg);
+  87   1      }
+  88          
+  89          uint32_t bmx280read24(uint8_t reg)
+  90          {
+  91   1        uint32_t result;
+  92   1      
+  93   1        I2CswStart(bmxx80_Address);
+  94   1        I2CswWriteByte(reg);
+  95   1        I2CswStart(bmxx80_Address | I2C_READ);
+  96   1        result = ((uint32_t)I2CswReadByte(I2C_ACK)) << 12;
+  97   1        result |= ((uint32_t)I2CswReadByte(I2C_ACK)) << 4;
+  98   1        result |= I2CswReadByte(I2C_NOACK) >> 4;
+  99   1        I2CswStop();
+ 100   1      
+ 101   1        return result;
+ 102   1      }
+ 103          
+ 104          void bmp180_get_calib_data(void)
+ 105          {
+ 106   1        cd.ac1 = bmxx80read16(BMP180_REGISTER_DIG_AC1);
+ 107   1        cd.ac2 = bmxx80read16(BMP180_REGISTER_DIG_AC2);
+ 108   1        cd.ac3 = bmxx80read16(BMP180_REGISTER_DIG_AC3);
+ 109   1        cd.ac4 = bmxx80read16(BMP180_REGISTER_DIG_AC4);
+ 110   1        cd.ac5 = bmxx80read16(BMP180_REGISTER_DIG_AC5);
+ 111   1        cd.ac6 = bmxx80read16(BMP180_REGISTER_DIG_AC6);
+ 112   1        cd.b1 = bmxx80read16(BMP180_REGISTER_DIG_B1);
+ 113   1        cd.b2 = bmxx80read16(BMP180_REGISTER_DIG_B2);
+ 114   1        cd.mb = bmxx80read16(BMP180_REGISTER_DIG_MB);
+ 115   1        cd.mc = bmxx80read16(BMP180_REGISTER_DIG_MC);
+ 116   1        cd.md = bmxx80read16(BMP180_REGISTER_DIG_MD);
+C51 COMPILER V9.59.0.0   BMXX80                                                            01/05/2024 10:04:35 PAGE 3   
+
+ 117   1      }
+ 118          
+ 119          void bmp280_get_calib_data(void)
+ 120          {
+ 121   1        cd2.dig_T1 = bmxx80read16_LE(BMX280_REGISTER_DIG_T1);
+ 122   1        cd2.dig_T2 = bmxx80readS16_LE(BMX280_REGISTER_DIG_T2);
+ 123   1        cd2.dig_T3 = bmxx80readS16_LE(BMX280_REGISTER_DIG_T3);
+ 124   1      
+ 125   1        cd2.dig_P1 = bmxx80read16_LE(BMX280_REGISTER_DIG_P1);
+ 126   1        cd2.dig_P2 = bmxx80readS16_LE(BMX280_REGISTER_DIG_P2);
+ 127   1        cd2.dig_P3 = bmxx80readS16_LE(BMX280_REGISTER_DIG_P3);
+ 128   1        cd2.dig_P4 = bmxx80readS16_LE(BMX280_REGISTER_DIG_P4);
+ 129   1        cd2.dig_P5 = bmxx80readS16_LE(BMX280_REGISTER_DIG_P5);
+ 130   1        cd2.dig_P6 = bmxx80readS16_LE(BMX280_REGISTER_DIG_P6);
+ 131   1        cd2.dig_P7 = bmxx80readS16_LE(BMX280_REGISTER_DIG_P7);
+ 132   1        cd2.dig_P8 = bmxx80readS16_LE(BMX280_REGISTER_DIG_P8);
+ 133   1        cd2.dig_P9 = bmxx80readS16_LE(BMX280_REGISTER_DIG_P9);
+ 134   1      }
+ 135          
+ 136          void bme280_get_calib_data(void)
+ 137          {
+ 138   1        bmp280_get_calib_data();
+ 139   1        cd2.dig_H1 = bmxx80read8(BME280_REGISTER_DIG_H1);
+ 140   1        cd2.dig_H2 = bmxx80readS16_LE(BME280_REGISTER_DIG_H2);
+ 141   1        cd2.dig_H3 = bmxx80read8(BME280_REGISTER_DIG_H3);
+ 142   1        cd2.dig_H4 = (bmxx80read8(BME280_REGISTER_DIG_H4) << 4 ) | (bmxx80read8(BME280_REGISTER_DIG_H4+1) & 0x0F)
+             -;
+ 143   1        cd2.dig_H5 = (bmxx80read8(BME280_REGISTER_DIG_H5+1) << 4) | (bmxx80read8(BME280_REGISTER_DIG_H5) >> 4);
+ 144   1        cd2.dig_H6 = (int8_t)bmxx80read8(BME280_REGISTER_DIG_H6);
+ 145   1      }
+ 146          
+ 147          void bmp280_set_sampling(void)
+ 148          {
+ 149   1        bmxx80write8(BME280_REGISTER_CONFIG, 0x00);
+ 150   1        bmxx80write8(BMXX80_REGISTER_CONTROL, 0xAB);
+ 151   1      }
+ 152          
+ 153          void bme280_set_sampling(void)
+ 154          {
+ 155   1        bmxx80write8(BME280_REGISTER_CONTROLHUMID, 0x05);
+ 156   1        bmp280_set_sampling();
+ 157   1      }
+ 158          
+ 159          uint16_t bmp180GetRawData(uint8_t param)
+ 160          {
+ 161   1        uint16_t ret;
+ 162   1      
+ 163   1        I2CswStart(bmxx80_Address);
+ 164   1        I2CswWriteByte(BMXX80_REGISTER_CONTROL);
+ 165   1        I2CswWriteByte(param);
+ 166   1        I2CswStop();
+ 167   1      
+ 168   1        delay_ms(BMP085_CONV_TIME);
+ 169   1      
+ 170   1        ret = bmxx80read16(BMP180_CONV_REG);
+ 171   1      
+ 172   1        return ret;
+ 173   1      }
+ 174          
+ 175          bit isReadingCalibration(void)
+ 176          {
+ 177   1        uint8_t const rStatus = bmxx80read8(BME280_REGISTER_STATUS);
+C51 COMPILER V9.59.0.0   BMXX80                                                            01/05/2024 10:04:35 PAGE 4   
+
+ 178   1      
+ 179   1        return (rStatus & (1 << 0)) != 0;
+ 180   1      }
+ 181          
+ 182          void bmxx80Init(void)
+ 183          {
+ 184   1        bit BMxx80Pres = !I2CswStartACKS(BMXX80_ADDR0);
+ 185   1        I2CswStop();
+ 186   1        if(BMxx80Pres) {
+ 187   2          bmxx80_Address = BMXX80_ADDR0;
+ 188   2        }
+ 189   1        else {
+ 190   2          BMxx80Pres = !I2CswStartACKS(BMXX80_ADDR1);
+ 191   2          I2CswStop();
+ 192   2          if(BMxx80Pres) {
+ 193   3            bmxx80_Address = BMXX80_ADDR1;
+ 194   3          }
+ 195   2        }
+ 196   1        if(BMxx80Pres) {
+ 197   2          bmxx80Sensor = bmxx80read8(BMXX80_REGISTER_CHIPID);
+ 198   2        }
+ 199   1      
+ 200   1        if( bmxx80Sensor == 0x00 || bmxx80Sensor == 0xFF ) {
+ 201   2          bmxx80Sensor = BMP_NONE;
+ 202   2          return;
+ 203   2        }
+ 204   1      
+ 205   1        if( bmxx80Sensor != BMP180_CHIP_ID ) {
+ 206   2          bmxx80write8(BMXX80_REGISTER_SOFTRESET, 0xB6);
+ 207   2          
+ 208   2          delay_ms(149);
+ 209   2          delay_ms(149);
+ 210   2      
+ 211   2          while (isReadingCalibration())
+ 212   2            delay_ms(100);
+ 213   2        }
+ 214   1      
+ 215   1        switch( bmxx80Sensor ) {
+ 216   2          case BMP180_CHIP_ID: {
+ 217   3            bmp180_get_calib_data();
+ 218   3            break;
+ 219   3          }
+ 220   2          case BMP280_CHIP_ID1:
+ 221   2          case BMP280_CHIP_ID2:
+ 222   2          case BMP280_CHIP_ID3: {
+ 223   3            bmp280_get_calib_data();
+ 224   3            bmp280_set_sampling();
+ 225   3            break;
+ 226   3          }
+ 227   2          case BME280_CHIP_ID: {
+ 228   3            bme280_get_calib_data();
+ 229   3            bme280_set_sampling();
+ 230   3            break;
+ 231   3          }
+ 232   2          default: break;
+ 233   2        }
+ 234   1      }
+ 235          
+ 236          void bmp180convert (void)
+ 237          {
+ 238   1        int32_t x1, x2, x3, b3, b5, b6, b8, p;
+ 239   1        uint32_t b4, b7;
+C51 COMPILER V9.59.0.0   BMXX80                                                            01/05/2024 10:04:35 PAGE 5   
+
+ 240   1      
+ 241   1        uint16_t ut = bmp180GetRawData(BMP180_TEMP_MEASURE);
+ 242   1        uint16_t up = bmp180GetRawData(BMP180_PRESSURE_MEASURE);
+ 243   1      
+ 244   1        if ( bmxx80Sensor == BMP180_CHIP_ID ) {
+ 245   2          x1 = ((int32_t)ut - cd.ac6) * cd.ac5 >> 15;
+ 246   2          x2 = ((int32_t)cd.mc << 11) / (x1 + cd.md);
+ 247   2          b5 = x1 + x2;
+ 248   2      
+ 249   2          temperature = (b5 + 8) >> 4;  // 0.1
+ 250   2      
+ 251   2          b6 = b5 - 4000;
+ 252   2          b8 = (b6 * b6) >> 12;
+ 253   2          x3 = (b8 * cd.b2 + b6 * cd.ac2) >> 11;
+ 254   2          b3 = (x3 +  4 * (int32_t)cd.ac1 + 2) >> 2;
+ 255   2          x1 = (b6 * cd.ac3) >> 13;
+ 256   2          x2 = (b8 * cd.b1) >> 16;
+ 257   2          x3 = ((x1 + x2) + 2) >> 2;
+ 258   2          b4 = (cd.ac4 * (uint32_t)(x3 + 32768)) >> 15;
+ 259   2          b7 = (((uint32_t) up - b3) * (50000));
+ 260   2      
+ 261   2          p = (b7 / b4) << 1;
+ 262   2      
+ 263   2          x1 = (p >> 8) * (p >> 8);
+ 264   2          x1 = (x1 * 3038) >> 16;
+ 265   2          x2 = (-7357 * p) >> 16;
+ 266   2      
+ 267   2          x3 = p + ((x1 + x2 + 3791) >> 4);
+ 268   2          ftemp = (float)x3 / 13.3321995F;
+ 269   2          pressure = (int16_t)ftemp;
+ 270   2        }
+ 271   1      }
+ 272          
+ 273          void bmx280compensate_temperature(void)
+ 274          {
+ 275   1        int32_t var1, var2;
+ 276   1      
+ 277   1        uint32_t adc_T = bmx280read24(BMX280_REGISTER_TEMPDATA);
+ 278   1      
+ 279   1        if (adc_T == 0x80000)
+ 280   1          return;
+ 281   1        
+ 282   1        var1 = ((((adc_T>>3) - ((int32_t)cd2.dig_T1 <<1))) * ((int32_t)cd2.dig_T2)) >> 11;
+ 283   1        var2 = (((((adc_T>>4) - ((int32_t)cd2.dig_T1)) * ((adc_T>>4) - ((int32_t)cd2.dig_T1))) >> 12) * ((int32_t
+             -)cd2.dig_T3)) >> 14;
+ 284   1      
+ 285   1        t_fine = var1 + var2;
+ 286   1        temperature = ((t_fine * 5 + 128) >> 8) / 10; // 0.1
+ 287   1      
+ 288   1        return;
+ 289   1      }
+ 290          
+ 291          void bmx280compensate_pressure(void)
+ 292          {
+ 293   1        uint32_t adc_P;
+ 294   1        int32_t var1, var2;
+ 295   1        uint32_t press;
+ 296   1      
+ 297   1        bmx280compensate_temperature(); // must be done first to get t_fine
+ 298   1        adc_P = bmx280read24(BMX280_REGISTER_PRESSUREDATA);
+ 299   1       
+ 300   1        var1 = (t_fine >> 1) - 64000;
+C51 COMPILER V9.59.0.0   BMXX80                                                            01/05/2024 10:04:35 PAGE 6   
+
+ 301   1        var2 = (((var1 >> 2) * (var1 >> 2)) >> 11) * cd2.dig_P6;
+ 302   1        var2 = var2 + ((var1 * cd2.dig_P5) << 1);
+ 303   1        var2 = (var2 >> 2) + ((int32_t)cd2.dig_P4 << 16);
+ 304   1        var1 = (((cd2.dig_P3 * (((var1 >> 2)*(var1 >> 2)) >> 13)) >> 3) + ((cd2.dig_P2 * var1) >> 1)) >> 18;
+ 305   1        var1 = ((32768 + var1) * cd2.dig_P1) >> 15;
+ 306   1        if (var1 == 0) {
+ 307   2          return /*0*/;
+ 308   2        }
+ 309   1        press = (((1048576 - adc_P) - (var2 >> 12))) * 3125;
+ 310   1        if(press < 0x80000000) {
+ 311   2          press = (press << 1) / var1;
+ 312   2        } else {
+ 313   2          press = (press / var1) * 2;
+ 314   2        }
+ 315   1        var1 = ((int32_t)cd2.dig_P9 * ((int32_t)(((press >> 3) * (press >> 3)) >> 13))) >> 12;
+ 316   1        var2 = (((int32_t)(press >> 2)) * (int32_t)cd2.dig_P8) >> 13;
+ 317   1        press = (press + ((var1 + var2 + cd2.dig_P7) >> 4));
+ 318   1        ftemp = (float)press / 13.3321995F;
+ 319   1        pressure = (int16_t)ftemp;
+ 320   1      
+ 321   1        return;
+ 322   1      }
+ 323          
+ 324          void bme280compensate_humidity(void)
+ 325          {
+ 326   1        int32_t adc_H;
+ 327   1        int32_t v_x1_u32r;
+ 328   1      
+ 329   1        bmx280compensate_temperature(); // must be done first to get t_fine
+ 330   1        adc_H = bmxx80read16(BME280_REGISTER_HUMIDDATA);
+ 331   1      
+ 332   1        if (adc_H == 0x8000) // value in case humidity measurement was disabled
+ 333   1          return;
+ 334   1        v_x1_u32r = (t_fine - ((int32_t)76800));
+ 335   1      
+ 336   1        v_x1_u32r = (((((adc_H << 14) - (((int32_t)cd2.dig_H4) << 20) -
+ 337   1            (((int32_t)cd2.dig_H5) * v_x1_u32r)) + ((int32_t)16384)) >> 15) *
+ 338   1            (((((((v_x1_u32r * ((int32_t)cd2.dig_H6)) >> 10) *
+ 339   1            (((v_x1_u32r * ((int32_t)cd2.dig_H3)) >> 11) + ((int32_t)32768))) >> 10) +
+ 340   1            ((int32_t)2097152)) * ((int32_t)cd2.dig_H2) + 8192) >> 14));
+ 341   1      
+ 342   1        v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) *
+ 343   1            ((int32_t)cd2.dig_H1)) >> 4));
+ 344   1      
+ 345   1        v_x1_u32r = (v_x1_u32r < 0) ? 0 : v_x1_u32r;
+ 346   1        v_x1_u32r = (v_x1_u32r > 419430400) ? 419430400 : v_x1_u32r;
+ 347   1        v_x1_u32r >>= 12;
+ 348   1        ftemp = (float)v_x1_u32r/10.24F;
+ 349   1        humidity = (int16_t)ftemp;
+ 350   1      
+ 351   1        return;
+ 352   1      }
+ 353          
+ 354          void bmp280convert (void)
+ 355          {
+ 356   1        bmx280compensate_pressure();
+ 357   1      
+ 358   1        return;
+ 359   1      }
+ 360          
+ 361          void bme280convert (void)
+ 362          {
+C51 COMPILER V9.59.0.0   BMXX80                                                            01/05/2024 10:04:35 PAGE 7   
+
+ 363   1        bmx280compensate_pressure();
+ 364   1        bme280compensate_humidity();
+ 365   1      
+ 366   1        return;
+ 367   1      }
+ 368          
+ 369          void bmxx80Convert(void)
+ 370          {
+ 371   1        switch( bmxx80Sensor ) {
+ 372   2          case BMP180_CHIP_ID: {
+ 373   3            bmp180convert();
+ 374   3            break;
+ 375   3          }
+ 376   2          case BMP280_CHIP_ID1:
+ 377   2          case BMP280_CHIP_ID2:
+ 378   2          case BMP280_CHIP_ID3: {
+ 379   3            bmp280convert();
+ 380   3            break;
+ 381   3          }
+ 382   2          case BME280_CHIP_ID: {
+ 383   3            bme280convert();
+ 384   3            break;
+ 385   3          }
+ 386   2          default: break;
+ 387   2        }
+ 388   1      
+ 389   1        return;
+ 390   1      }
+ 391          
+ 392          int16_t bmxx80GetTemp(void)
+ 393          {
+ 394   1        return temperature;
+ 395   1      }
+ 396          
+ 397          int16_t bmxx80GetPressure(void)
+ 398          {
+ 399   1        return pressure;
+ 400   1      }
+ 401          
+ 402          int16_t bme280GetHumidity(void)
+ 403          {
+ 404   1        return humidity;
+ 405   1      }
+ 406          
+ 407          uint8_t bmxx80HaveSensor(void)
+ 408          {
+ 409   1        return bmxx80Sensor;
+ 410   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   3363    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     71      92
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

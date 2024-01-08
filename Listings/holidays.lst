@@ -1,0 +1,209 @@
+C51 COMPILER V9.59.0.0   HOLIDAYS                                                          01/05/2024 10:04:35 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE HOLIDAYS
+OBJECT MODULE PLACED IN .\Objects\holidays.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE holidays.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\OldDIYClock-master) DEBUG 
+                    -OBJECTEXTEND PRINT(.\Listings\holidays.lst) TABS(2) OBJECT(.\Objects\holidays.obj)
+
+line level    source
+
+   1          #include "holidays.h"
+   2          #include "sys.h"
+   3          #include "rtc.h"
+   4          #include "display.h"
+   5          
+   6            /*
+   7             э = \xFD
+   8            */
+   9            
+  10          bit holiday = 0; 
+  11          
+  12          code char hd_01_01[] = "С НОВЫМ ГОДОМ!!!";
+  13          code char hd_01_07[] = "Рождество христово.";
+  14          code char hd_01_14[] = "Старый Новый год.";
+  15          code char hd_01_19[] = "Крещение Господне.";
+  16          code char hd_01_25[] = "Татьянин день.";
+  17          code char hd_02_14[] = "День всех влюблённых.";
+  18          code char hd_02_23[] = "День защитника Отечества.";
+  19          code char hd_03_08[] = "Международный женский день.";
+  20          code char hd_03_19[] = "День моряка-подводника.";
+  21          code char hd_04_01[] = "День смеха.";
+  22          code char hd_04_12[] = "День космонавтики.";
+  23          code char hd_05_01[] = "Праздник Весны и Труда.";
+  24          code char hd_05_09[] = "День победы!!!";
+  25          code char hd_05_19[] = "День пионерии.";
+  26          code char hd_05_28[] = "День пограничника.";
+  27          code char hd_06_01[] = "День защиты детей.";
+  28          code char hd_06_12[] = "День РОССИИ.";
+  29          code char hd_06_27[] = "День молодежи.";
+  30          code char hd_07_08[] = "День семьи, любви и верности.";
+  31          code char hd_08_02[] = "День Воздушно-десантных войск.";
+  32          code char hd_08_12[] = "День Военно-воздушных сил.";
+  33          code char hd_09_01[] = "День знаний.";
+  34          code char hd_10_05[] = "День учителя.";
+  35          code char hd_11_18[] = "День рождения Деда Мороза.";
+  36          code char hd_12_22[] = "День энергетика.";
+  37          
+  38          code char hd_256_day[] = "День программиста.";
+  39          code char hd_06_medicalday[] = "День медицинского работника.";
+  40          code char hd_07_lastfriday[] = "День системного администратора.";
+  41          code char hd_07_lastsunday[] = "День Военно-Морского Флота.";
+  42          code char hd_08_beerday[] = "Международный день пива.";
+  43          code char hd_08_builderday[] = "День строителя.";
+  44          code char hd_09_tankmanday[] = "День танкиста.";
+  45          code char hd_10_lastsunday[] = "День автомобилиста.";
+  46          code char hd_11_lastsunday[] = "День матери.";
+  47          
+  48          HOLIDAY code holidays[] = {
+  49              hAN( 1, 1, hd_01_01 ),
+  50              hAN( 1, 7, hd_01_07 ),
+  51              hAN( 1, 14, hd_01_14 ),
+  52              hAN( 1, 19, hd_01_19 ),
+  53              hAN( 1, 25, hd_01_25 ),
+  54              hAN( 2, 14, hd_02_14 ),
+C51 COMPILER V9.59.0.0   HOLIDAYS                                                          01/05/2024 10:04:35 PAGE 2   
+
+  55              hAN( 2, 23, hd_02_23 ),
+  56              hAN( 3, 8, hd_03_08 ),
+  57              hAN( 3, 19, hd_03_19 ),
+  58              hAN( 4, 1, hd_04_01 ),
+  59              hAN( 4, 12, hd_04_12 ),
+  60              hAN( 5, 1, hd_05_01 ),
+  61              hAN( 5, 9, hd_05_09 ),
+  62              hAN( 5, 19, hd_05_19 ),
+  63              hAN( 5, 28, hd_05_28 ),
+  64              hAN( 6, 1, hd_06_01 ),
+  65              hAN( 6, 12, hd_06_12 ),
+  66              hAN( 6, 27, hd_06_27 ),
+  67              hAN( 7, 8, hd_07_08 ),
+  68              hAN( 8, 2, hd_08_02 ),
+  69              hAN( 8, 12, hd_08_12 ),
+  70              hAN( 9, 1, hd_09_01 ),
+  71              hAN( 10, 5, hd_10_05 ),
+  72              hAN( 11, 18, hd_11_18 ),
+  73              hAN( 12, 22, hd_12_22 ),
+  74              hADN( 256, hd_256_day ),
+  75              hAWN( 6, W3, SUN, hd_06_medicalday ),
+  76              hAWL( 7, FRY, hd_07_lastfriday ),
+  77              hAWL( 7, SUN, hd_07_lastsunday ),
+  78              hAWN( 8, W1, FRY, hd_08_beerday ),
+  79              hAWN( 8, W2, SUN, hd_08_builderday ),
+  80              hAWN( 9, W2, SUN, hd_09_tankmanday ),
+  81              hAWL( 10, SUN, hd_10_lastsunday ),
+  82              hAWL( 11, SUN, hd_11_lastsunday ),
+  83          };
+  84          
+  85          uint8_t wdays[5];
+  86          
+  87          void checkWeekDays(void)
+  88          {
+  89   1        uint8_t i, t;
+  90   1        int8_t w = rtc.wday;
+  91   1      
+  92   1        for( i = 0; i < 5; i++ ) {
+  93   2          wdays[i] = 0;
+  94   2        }
+  95   1        w = rtc.date;
+  96   1        while( w > 7 ) {
+  97   2          w -=7;
+  98   2        }
+  99   1        t = rtcDaysInMonth();
+ 100   1        for( i = 0; (( i < 5 ) && ( w <= t )); i++, w+=7 ) {
+ 101   2          wdays[i] = w;
+ 102   2        }
+ 103   1      
+ 104   1        return;
+ 105   1      }
+ 106          
+ 107          bit checkLastWeek(void)
+ 108          {
+ 109   1        if( wdays[W5] == 0 ) {
+ 110   2          if( wdays[W4] == rtc.date )
+ 111   2            return 1;
+ 112   2        }
+ 113   1        else {
+ 114   2          if( wdays[W5] == rtc.date )
+ 115   2            return 1;
+ 116   2        }
+C51 COMPILER V9.59.0.0   HOLIDAYS                                                          01/05/2024 10:04:35 PAGE 3   
+
+ 117   1      
+ 118   1        return 0;
+ 119   1      }
+ 120          
+ 121          bit checkWeekDay(uint8_t weekly)
+ 122          {
+ 123   1          return wdays[weekly] == rtc.date;
+ 124   1      }
+ 125          
+ 126          void checkHolidays(void)
+ 127          {
+ 128   1        uint8_t i;
+ 129   1      
+ 130   1        holiday = 0;
+ 131   1        render_buffer_size = 0;
+ 132   1      
+ 133   1        checkWeekDays();
+ 134   1      
+ 135   1        for(i=0; (i < ELEMENTS(holidays)) && (holiday == 0); i++) {
+ 136   2          switch(( holidays[i].month & 0xF0) >> 4) {
+ 137   3            case 0: {
+ 138   4              if((holidays[i].day == rtc.date) && ((holidays[i].month & 0x0F) == rtc.month)) {
+ 139   5                holiday = 1;
+ 140   5                renderHoliday(holidays[i].length, holidays[i].ptr);
+ 141   5                break;
+ 142   5              }
+ 143   4              break;
+ 144   4            }
+ 145   3            case 1:
+ 146   3            case 2:
+ 147   3            case 3:
+ 148   3            case 4:
+ 149   3            case 5: {
+ 150   4              if(((holidays[i].month & 0x0F) == rtc.month)&&(rtc.wday == holidays[i].day)&&checkWeekDay((( holidays[
+             -i].month & 0x70) >> 4)-1)) {
+ 151   5                holiday = 1;
+ 152   5                renderHoliday(holidays[i].length, holidays[i].ptr);
+ 153   5              }
+ 154   4              break;
+ 155   4            }
+ 156   3            case 6: {
+ 157   4              if(rtcYearDay()==((((uint16_t)holidays[i].month & 0x01) << 8) | holidays[i].day)) {
+ 158   5                holiday = 1;
+ 159   5                renderHoliday(holidays[i].length, holidays[i].ptr);
+ 160   5              }
+ 161   4              break;
+ 162   4            }
+ 163   3            case 7: {
+ 164   4              if(((holidays[i].month & 0x0F) == rtc.month)&&(rtc.wday == holidays[i].day)&&checkLastWeek()) {
+ 165   5                holiday = 1;
+ 166   5                renderHoliday(holidays[i].length, holidays[i].ptr);
+ 167   5              }
+ 168   4              break;
+ 169   4            }
+ 170   3            default: {
+ 171   4              holiday = 0;
+ 172   4              render_buffer_size = 0;
+ 173   4            }
+ 174   3          }
+ 175   2        }
+ 176   1      
+ 177   1        return;
+C51 COMPILER V9.59.0.0   HOLIDAYS                                                          01/05/2024 10:04:35 PAGE 4   
+
+ 178   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    484    ----
+   CONSTANT SIZE    =    865    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      5       2
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

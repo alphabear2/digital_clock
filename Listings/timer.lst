@@ -1,0 +1,86 @@
+C51 COMPILER V9.59.0.0   TIMER                                                             01/05/2024 10:04:35 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE TIMER
+OBJECT MODULE PLACED IN .\Objects\timer.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE timer.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\OldDIYClock-master) DEBUG OBJ
+                    -ECTEXTEND PRINT(.\Listings\timer.lst) TABS(2) OBJECT(.\Objects\timer.obj)
+
+line level    source
+
+   1          #include "sys.h"
+   2          #include "timer.h"
+   3          #include "key.h"
+   4          #include "display.h"
+   5          
+   6          uint8_t keytest;
+   7          
+   8          void timer1Init(void)
+   9          {
+  10   1      
+  11   1        return;
+  12   1      }
+  13          
+  14          void timer0Init(void)
+  15          {
+  16   1        //125us
+  17   1        AUXR |= 0x80;   // 1T
+  18   1        TMOD &= 0xF0;
+  19   1      #if (SYSCLK == SYSCLK_11)
+                // @11.059MHz
+                TL0 = 0x9A;
+                TH0 = 0xFA;
+              #else
+  24   1        // @18.432MHz
+  25   1        TL0 = 0x00;
+  26   1        TH0 = 0xF7;
+  27   1      #endif
+  28   1        TF0 = 0;
+  29   1        TR0 = 1;
+  30   1        ET0 = 1;
+  31   1      
+  32   1        return;
+  33   1      }
+  34          
+  35          void timerInit(void)
+  36          {
+  37   1        timer0Init();
+  38   1        timer1Init();
+  39   1        EA = 1;
+  40   1      
+  41   1        return;
+  42   1      }
+  43          
+  44          void timer0_isr(void) interrupt 1
+  45          {
+  46   1        displayRefresh();
+  47   1        keytest++;
+  48   1        if( keytest > 32 ) {
+  49   2          keytest=0;
+  50   2          CheckBtn();
+  51   2        }
+  52   1      
+  53   1        return;
+  54   1      }
+C51 COMPILER V9.59.0.0   TIMER                                                             01/05/2024 10:04:35 PAGE 2   
+
+  55          
+  56          void timer1_isr(void) interrupt 3
+  57          {
+  58   1      
+  59   1        return;
+  60   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    108    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      1    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

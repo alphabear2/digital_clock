@@ -1,0 +1,123 @@
+C51 COMPILER V9.59.0.0   SI7021                                                            01/05/2024 10:04:35 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE SI7021
+OBJECT MODULE PLACED IN .\Objects\si7021.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE si7021.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\OldDIYClock-master) DEBUG OB
+                    -JECTEXTEND PRINT(.\Listings\si7021.lst) TABS(2) OBJECT(.\Objects\si7021.obj)
+
+line level    source
+
+   1          #include "si7021.h"
+   2          #include "i2c.h"
+   3          #include "pinout.h"
+   4          #include "delay.h"
+   5          #include "sys.h"
+   6          
+   7          bit _si_exists = 0;
+   8          
+   9          int16_t celsiusHundredths = 0;
+  10          uint16_t humidityPercent = 0;
+  11          
+  12          void _writeReg(uint8_t * reg, uint8_t reglen)
+  13          {
+  14   1        uint8_t i;
+  15   1        I2CswStart(SI7021_ADDR);
+  16   1        for( i = 0; i < reglen; i++ ) {
+  17   2          reg += i;
+  18   2          I2CswWriteByte(*reg);
+  19   2        }
+  20   1        I2CswStop();
+  21   1      
+  22   1        return;
+  23   1      }
+  24          
+  25          void _readReg(uint8_t * reg, uint8_t reglen)
+  26          {
+  27   1        uint8_t i;
+  28   1        I2CswStart(SI7021_ADDR|I2C_READ);
+  29   1        for( i = 0; i < reglen; i++ ) {
+  30   2          reg[i] = I2CswReadByte(I2C_ACK);
+  31   2        }
+  32   1        I2CswReadByte(I2C_NOACK);
+  33   1        I2CswStop();
+  34   1      
+  35   1        return;
+  36   1      }
+  37          
+  38          void _command(uint8_t _cmd, uint8_t * buf)
+  39          {
+  40   1        _writeReg(&_cmd, sizeof _cmd);
+  41   1        delay_ms(SI7021_DELAY_INTERVAL);
+  42   1        _readReg(buf, 2);
+  43   1      
+  44   1        return;
+  45   1      }
+  46          
+  47          int16_t _getCelsiusPostHumidity()
+  48          {
+  49   1        int32_t tempraw;
+  50   1        uint8_t tempbytes[2];
+  51   1        _command(SI7021_MEASURE_TEMP_NOHOLD_CMD, tempbytes);
+  52   1        tempraw = (int32_t)tempbytes[0] << 8 | tempbytes[1];
+  53   1        tempraw &= 0xFFFC;
+  54   1        return ((17572 * tempraw) >> 16) - 4685;
+C51 COMPILER V9.59.0.0   SI7021                                                            01/05/2024 10:04:35 PAGE 2   
+
+  55   1      }
+  56          
+  57          uint16_t getHumidityBasisPoints() {
+  58   1        int32_t humraw;
+  59   1        uint8_t humbytes[2];
+  60   1        _command(SI7021_MEASURE_HUM_NOHOLD_CMD, humbytes);
+  61   1        humraw = (int32_t)humbytes[0] << 8 | humbytes[1];
+  62   1        humraw &= 0xFFFC;
+  63   1        return ((12500 * humraw) >> 16) - 600;
+  64   1      }
+  65          
+  66          void si7021Init(void)
+  67          {
+  68   1        _si_exists = !I2CswStartACKS(SI7021_ADDR);
+  69   1        I2CswStop();
+  70   1        if( !_si_exists ) {
+  71   2          return;
+  72   2        }
+  73   1        //si7021Reset();
+  74   1      
+  75   1        return;
+  76   1      }
+  77          
+  78          void si7021Convert(void)
+  79          {
+  80   1        celsiusHundredths = _getCelsiusPostHumidity()/10; // 0.1
+  81   1        humidityPercent = getHumidityBasisPoints();
+  82   1      }
+  83          
+  84          int16_t si7021GetTemp(void)
+  85          {
+  86   1        return celsiusHundredths;
+  87   1      }
+  88          
+  89          uint16_t si7021GetHumidity(void)
+  90          {
+  91   1        return humidityPercent;
+  92   1      }
+  93          
+  94          bit si7021SensorExists(void)
+  95          {
+  96   1        return _si_exists;
+  97   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    370    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      4      26
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

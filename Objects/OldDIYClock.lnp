@@ -1,0 +1,18 @@
+".\Objects\STARTUP.obj",
+".\Objects\main.obj",
+".\Objects\display.obj",
+".\Objects\fonts.obj",
+".\Objects\rtc.obj",
+".\Objects\i2c.obj",
+".\Objects\delay.obj",
+".\Objects\key.obj",
+".\Objects\settings.obj",
+".\Objects\alarm.obj",
+".\Objects\eeprom.obj",
+".\Objects\timer.obj",
+".\Objects\holidays.obj",
+".\Objects\bmxx80.obj",
+".\Objects\si7021.obj" 
+TO ".\Objects\OldDIYClock" 
+PRINT(".\Listings\OldDIYClock.m51") RAMSIZE(256) 
+DISABLEWARNING (16) 

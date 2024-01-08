@@ -1,0 +1,87 @@
+C51 COMPILER V9.59.0.0   SETTINGS                                                          01/05/2024 10:04:34 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE SETTINGS
+OBJECT MODULE PLACED IN .\Objects\settings.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE settings.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\OldDIYClock-master) DEBUG 
+                    -OBJECTEXTEND PRINT(.\Listings\settings.lst) TABS(2) OBJECT(.\Objects\settings.obj)
+
+line level    source
+
+   1          #include "sys.h"
+   2          #include "eeprom.h"
+   3          #include "settings.h"
+   4          
+   5          EEP_Param eep;
+   6          static code EEP_Param eepDef = {0xFF, 0, 1, 0, 0, 1, 5, 0, 7, 30, 1, 1, 1, 1, 1, 0, 0, 0, 0};
+   7          
+   8          code EEP_Param eepMin = {0xFF, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -9, -128};
+   9          code EEP_Param eepMax = {0xFF, 1, 5, 4, 4, 1, 6, 1, 23, 59, 1, 1, 1, 1, 1, 1, 1, 9, 127};
+  10          
+  11          static uint8_t workSector = 0;
+  12          
+  13          static void settingsFirstEnable(void)
+  14          {
+  15   1        bit needDef = 1;
+  16   1        uint8_t i;
+  17   1        for(i=0; i<9; i++){
+  18   2          if( *((uint8_t*)(&eep.on + i)) != 0xFF ) {
+  19   3            needDef = 0;
+  20   3            break;
+  21   3          }
+  22   2        }
+  23   1        if(needDef) {
+  24   2          for( i=0; i<sizeof(EEP_Param); i++ ){
+  25   3            *((uint8_t*)(&eep.pageBlock + i)) = *((uint8_t*)(&eepDef.pageBlock + i));
+  26   3          }
+  27   2          settingsSave();
+  28   2        }
+  29   1      
+  30   1        return;
+  31   1      }
+  32          
+  33          void settingsInit(void)
+  34          {
+  35   1        uint8_t i;
+  36   1        for( i=0; i < sizeof(EEP_Param); i++) {
+  37   2          *((uint8_t*)&eep + i) = IapReadByte((workSector <<9) + i);
+  38   2        }
+  39   1        settingsFirstEnable();
+  40   1      
+  41   1        return;
+  42   1      }
+  43          
+  44          void settingsSave(void)
+  45          {
+  46   1        uint8_t i;
+  47   1        IapEraseSector(workSector);
+  48   1        /*
+  49   1      
+  50   1         у STC15W1K24S 10 блоков(секторов) по 512 байт, вроде как рассчитаных на 100к стераний.
+  51   1         после стерания нужно удостовериться что блок стерся и содержит 0xFF,
+  52   1         если нет то в первый байт блока записать 0,
+  53   1         и начать использовать следующий блок (workSector++).
+  54   1      
+C51 COMPILER V9.59.0.0   SETTINGS                                                          01/05/2024 10:04:34 PAGE 2   
+
+  55   1        */
+  56   1        for( i=0; i < sizeof(EEP_Param); i++) {
+  57   2          IapProgramByte((workSector <<9) + i, *((uint8_t*)&eep + i));
+  58   2        }
+  59   1      
+  60   1        return;
+  61   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    214    ----
+   CONSTANT SIZE    =     57    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     20       3
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

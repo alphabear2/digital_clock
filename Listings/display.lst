@@ -1,0 +1,1157 @@
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE DISPLAY
+OBJECT MODULE PLACED IN .\Objects\display.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE display.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\OldDIYClock-master) DEBUG O
+                    -BJECTEXTEND PRINT(.\Listings\display.lst) TABS(2) OBJECT(.\Objects\display.obj)
+
+line level    source
+
+   1          #include "sys.h"
+   2          #include "display.h"
+   3          #include "pinout.h"
+   4          #include "rtc.h"
+   5          #include "bmxx80.h"
+   6          #include "si7021.h"
+   7          #include "key.h"
+   8          #include "settings.h"
+   9          #include "alarm.h"
+  10          #include "fonts.h"
+  11          #include "weekpicture.h"
+  12          #include "menupicture.h"
+  13          
+  14          uint8_t data disp[DISPLAYSIZE];
+  15          uint8_t render_buffer_size = 0;
+  16          int16_t scroll_index = -1;
+  17          uint8_t xdata render_buffer[RENDSERBUFFERSIZE];
+  18          uint8_t *pdisp;
+  19          uint8_t code *fptr;
+  20          uint8_t displayBright;
+  21          uint8_t dispMode = MODE_MAIN;
+  22          uint8_t code hourbright[12] = { 0x00, 0x00, 0x12, 0x34, 0x55, 0x55, 0x55, 0x55, 0x55, 0x54, 0x32, 0x10 };
+  23          
+  24          uint8_t menuNumber = MODE_EDIT_TIME;
+  25          uint8_t screenTime = 0;
+  26          uint8_t widgetNumber = 0;
+  27          bit reversed;
+  28          bit refstart;
+  29          uint8_t refcount;
+  30          uint8_t dotcount;
+  31          
+  32          void displayInit(void)
+  33          {
+  34   1        P0M1 = 0x00;
+  35   1        P0M0 = 0x3F;
+  36   1        P1M1 = 0x00;
+  37   1        P1M0 = 0xFF;
+  38   1        P2M1 = 0x00;
+  39   1        P2M0 = 0xFF;
+  40   1        P3M1 = 0x00;
+  41   1        P3M0 = 0x7F;
+  42   1        displayBright = eep.bright;
+  43   1        refstart = 0;
+  44   1        reversed = key_mer;
+  45   1        updateFont();
+  46   1        pdisp = &render_buffer[0];
+  47   1      
+  48   1        return;
+  49   1      }
+  50          
+  51          void displayClear(void)
+  52          {
+  53   1        P3 &= 0x80;
+  54   1        P1 |= 0xff;
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 2   
+
+  55   1        P2 |= 0xff;
+  56   1        P0 |= 0x3F;
+  57   1      
+  58   1        return;
+  59   1      }
+  60          
+  61          void displayRefresh(void)
+  62          {
+  63   1        static uint8_t columnrefnum = 0;
+  64   1        static uint8_t columnrefwidth = 0;
+  65   1        uint8_t k;
+  66   1      
+  67   1        if(columnrefwidth < 5 ) {
+  68   2          if ( columnrefwidth == displayBright )
+  69   2            displayClear();
+  70   2          columnrefwidth++;
+  71   2          return;
+  72   2        }
+  73   1        else {
+  74   2          columnrefwidth = 0;
+  75   2          displayClear();
+  76   2          if(!reversed) {
+  77   3            k = 21-columnrefnum;
+  78   3          }
+  79   2          else {
+  80   3            k = columnrefnum;
+  81   3          }
+  82   2          switch(k) {
+  83   3            case 0:   col1=0;  break;
+  84   3            case 1:   col2=0;  break;
+  85   3            case 2:   col3=0;  break; 
+  86   3            case 3:   col4=0;  break;
+  87   3            case 4:   col5=0;  break;
+  88   3            case 5:   col6=0;  break; 
+  89   3            case 6:   col7=0;  break;
+  90   3            case 7:   col8=0;  break;
+  91   3            case 8:   col9=0;  break;
+  92   3            case 9:   col10=0; break;
+  93   3            case 10:  col11=0; break;
+  94   3            case 11:  col12=0; break;
+  95   3            case 12:  col13=0; break;
+  96   3            case 13:  col14=0; break; 
+  97   3            case 14:  col15=0; break;
+  98   3            case 15:  col16=0; break;
+  99   3            case 16:  col17=0; break; 
+ 100   3            case 17:  col18=0; break;
+ 101   3            case 18:  col19=0; break;
+ 102   3            case 19:  col20=0; break;
+ 103   3            case 20:  col21=0; break;
+ 104   3            case 21:  col22=0; break;
+ 105   3            default:break;
+ 106   3          }
+ 107   2      
+ 108   2          if(!reversed) { 
+ 109   3            P3 = disp[21-k];
+ 110   3          }
+ 111   2          else {
+ 112   3            P3 = ((disp[k]>>6)&0x01)|((disp[k]>>4)&0x02)|((disp[k]>>2)&0x04)| (disp[k]&0x08)|((disp[k]<<2)&0x10)|((
+             -disp[k]<<4)&0x20)|((disp[k]<<6)&0x40);
+ 113   3          }
+ 114   2          columnrefnum++;
+ 115   2          if( columnrefnum > 21 ) {
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 3   
+
+ 116   3            columnrefnum = 0;
+ 117   3            reversed = key_mer;
+ 118   3            if(refstart==0) {
+ 119   4              refstart = 1;
+ 120   4            }
+ 121   3          }
+ 122   2        }
+ 123   1      
+ 124   1        return;
+ 125   1      }
+ 126          
+ 127          void resetDispLoop(void)
+ 128          {
+ 129   1        dispMode = MODE_MAIN;
+ 130   1        screenTime = 0;
+ 131   1        widgetNumber = 0;
+ 132   1      
+ 133   1        return;
+ 134   1      }
+ 135          
+ 136          void checkAlarm(void)
+ 137          {
+ 138   1        static bit firstCheck = 1;
+ 139   1      
+ 140   1        rtcReadTime();
+ 141   1      
+ 142   1        // Once check if it's a new second
+ 143   1        if (rtc.sec == 0) {
+ 144   2          if (firstCheck) {
+ 145   3            firstCheck = 0;
+ 146   3            // Check alarm
+ 147   3            if (alarm.on && rtc.hour == alarm.hour && rtc.min == alarm.min) {
+ 148   4              if (*((int8_t*)&alarm.mon + rtc.wday - 1))
+ 149   4                alarmTimer = 60 * (uint16_t)eep.alarmTimeout;
+ 150   4            }
+ 151   3            else {
+ 152   4              // Check new hour
+ 153   4              if (rtc.hour > alarm.hour && rtc.min == 0 && eep.hourSignal)
+ 154   4                startBeeper(BEEP_LONG);
+ 155   4            }
+ 156   3          }
+ 157   2        }
+ 158   1        else {
+ 159   2          firstCheck = 1;
+ 160   2        }
+ 161   1      
+ 162   1        return;
+ 163   1      }
+ 164          
+ 165          void updateFont(void)
+ 166          {
+ 167   1        switch(eep.fontMode) {
+ 168   2          default:
+ 169   2          case 0: {fptr = &num_font1[0]; break; }
+ 170   2          case 1: {fptr = &num_font2[0]; break; }
+ 171   2          case 2: {fptr = &num_font3[0]; break; }
+ 172   2          case 3: {fptr = &num_font4[0]; break; }
+ 173   2          case 4: {fptr = &num_font5[0]; break; }
+ 174   2        }
+ 175   1      
+ 176   1        return;
+ 177   1      }
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 4   
+
+ 178          
+ 179          void showDS3231(void)
+ 180          {
+ 181   1        uint8_t i, code *sptr = &pic_DS3231[0];
+ 182   1      
+ 183   1        for(i=0; i<DISPLAYSIZE; i++, sptr++, pdisp++) {
+ 184   2          *pdisp = *sptr;
+ 185   2        }
+ 186   1      
+ 187   1        return;
+ 188   1      }
+ 189          
+ 190          void showDot(void)
+ 191          {
+ 192   1        uint8_t i, dot;
+ 193   1      
+ 194   1        switch(eep.dotMode) {
+ 195   2          case 0: {
+ 196   3            if (dotcount < 15) { dot = 0; }
+ 197   3            else if (dotcount < 45) { dot = 3; }
+ 198   3            else { dot = 0; }
+ 199   3            break;
+ 200   3          }
+ 201   2          default:
+ 202   2          case 1: {
+ 203   3            if (dotcount < 5) { dot = 0; }
+ 204   3            else if (dotcount < 13) { dot = 1; }
+ 205   3            else if (dotcount < 22) { dot = 2; }
+ 206   3            else if (dotcount < 39) { dot = 3; }
+ 207   3            else if (dotcount < 48) { dot = 2; }
+ 208   3            else if (dotcount < 56) { dot = 1; }
+ 209   3            else { dot = 0; }
+ 210   3            break;
+ 211   3          }
+ 212   2          case 2: {
+ 213   3            if (dotcount < 6) { dot = 0; }
+ 214   3            else if (dotcount < 18) { dot = 3; }
+ 215   3            else if (dotcount < 30) { dot = 4; }
+ 216   3            else if (dotcount < 42) { dot = 5; }
+ 217   3            else if (dotcount < 54) { dot = 6; }
+ 218   3            else { dot = 0; }
+ 219   3            break;
+ 220   3          }
+ 221   2          case 3: {
+ 222   3            if (dotcount < 7) { dot = 0; }
+ 223   3            else if (dotcount < 22) { dot = 7; }
+ 224   3            else if (dotcount < 37) { dot = 3; }
+ 225   3            else if (dotcount < 52) { dot = 8; }
+ 226   3            else { dot = 0; }
+ 227   3            break;
+ 228   3          }
+ 229   2          case 4: {
+ 230   3            if (dotcount < 7) { dot = 0; }
+ 231   3            else if (dotcount < 22) { dot = 1; }
+ 232   3            else if (dotcount < 37) { dot = 2; }
+ 233   3            else if (dotcount < 52) { dot = 1; }
+ 234   3            else { dot = 0; }
+ 235   3            break;
+ 236   3          }
+ 237   2        }
+ 238   1        for(i=0; i<4; i++, pdisp++) {
+ 239   2          *pdisp = dot_font[4*dot+i];
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 5   
+
+ 240   2        }
+ 241   1      
+ 242   1        return;
+ 243   1      }
+ 244          
+ 245          void showNumber(uint8_t num, uint8_t clean, uint8_t dig )
+ 246          {
+ 247   1        uint8_t i, code *sptr;
+ 248   1      
+ 249   1        for(i=0; i<4; i++, pdisp++) {
+ 250   2            if(!clean&&(!dig ||((num/10) > 0 ))) {
+ 251   3            sptr = fptr + (4*(num/10)+i);
+ 252   3            *pdisp = *sptr;
+ 253   3          }
+ 254   2          else
+ 255   2            *pdisp = 0x00;
+ 256   2        }
+ 257   1        *pdisp = 0x00;
+ 258   1        pdisp++;
+ 259   1        for(i=0; i<4; i++, pdisp++) {
+ 260   2          if(!clean) {
+ 261   3            sptr = fptr + (4*(num%10)+i);
+ 262   3            *pdisp = *sptr;
+ 263   3          }
+ 264   2          else
+ 265   2            *pdisp = 0x00;
+ 266   2        }
+ 267   1      
+ 268   1        return;
+ 269   1      }
+ 270          
+ 271          void showTime(void)
+ 272          {
+ 273   1        if( rtc.hour > 24 || rtc.min > 60 )
+ 274   1        {
+ 275   2          showDS3231();
+ 276   2          return;
+ 277   2        }
+ 278   1        showNumber(rtc.hour, 0, 0);
+ 279   1        showDot();
+ 280   1        showNumber(rtc.min, 0, 0);
+ 281   1      
+ 282   1        return;
+ 283   1      }
+ 284          
+ 285          void showDate(void)
+ 286          {
+ 287   1        uint8_t i;
+ 288   1      
+ 289   1        if( rtc.month > 12 || rtc.date > 32 )
+ 290   1        {
+ 291   2          showDS3231();
+ 292   2          return;
+ 293   2        }
+ 294   1        showNumber(rtc.date, 0, 1);
+ 295   1        for(i=0; i<4; i++, pdisp++) {
+ 296   2          *pdisp = dot_font[4+i];
+ 297   2        }
+ 298   1        showNumber(rtc.month, 0, 0);
+ 299   1      
+ 300   1        return;
+ 301   1      }
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 6   
+
+ 302          
+ 303          void showDayWeek(void)
+ 304          {
+ 305   1        uint8_t i, code *sptr;
+ 306   1      
+ 307   1        switch(rtc.wday) {
+ 308   2          case 1: sptr = &pic_mon[0];break;
+ 309   2          case 2: sptr = &pic_tue[0];break;
+ 310   2          case 3: sptr = &pic_wed[0];break;
+ 311   2          case 4: sptr = &pic_thu[0];break;
+ 312   2          case 5: sptr = &pic_fri[0];break;
+ 313   2          case 6: sptr = &pic_sat[0];break;
+ 314   2          case 7: sptr = &pic_sun[0];break;
+ 315   2          default: sptr = &pic_DS3231[0];break;
+ 316   2        }
+ 317   1        for(i=0; i<DISPLAYSIZE; i++, sptr++, pdisp++) {
+ 318   2          *pdisp = *sptr;
+ 319   2        }
+ 320   1      
+ 321   1        return;
+ 322   1      }
+ 323          
+ 324          void showTemperature(void)
+ 325          {
+ 326   1        uint8_t i;
+ 327   1        int8_t temp = eep.tempcoef;
+ 328   1        temp += rtc.temp;
+ 329   1      
+ 330   1        if(si7021SensorExists() ) {
+ 331   2          temp = (si7021GetTemp() / 5);
+ 332   2          if(temp & 1 ) temp += 1;
+ 333   2          temp >>= 1;
+ 334   2        }
+ 335   1        else if(bmxx80HaveSensor() ) {
+ 336   2          temp = (bmxx80GetTemp() / 5 );
+ 337   2          if(temp & 1 ) temp += 1;
+ 338   2          temp >>= 1;
+ 339   2        }
+ 340   1      
+ 341   1        if (temp > 99) {
+ 342   2          for(i=0; i<4; i++, pdisp++) {
+ 343   3            *pdisp = 0x00;
+ 344   3          }
+ 345   2          for(i=0; i<5; i++, pdisp++) {
+ 346   3            *pdisp = temperature_font[50+i];
+ 347   3          }
+ 348   2          *pdisp = 0x00;
+ 349   2          pdisp++;
+ 350   2          *pdisp = 0x00;
+ 351   2          pdisp++;
+ 352   2        }
+ 353   1        else {
+ 354   2          if (temp > 9) {
+ 355   3            for(i=0; i<5; i++, pdisp++) {
+ 356   4              *pdisp = temperature_font[5*(temp/10)+i];
+ 357   4            }
+ 358   3          }
+ 359   2          else {
+ 360   3            for(i=0; i<5; i++, pdisp++) {
+ 361   4              *pdisp = 0x00;
+ 362   4            }
+ 363   3          }
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 7   
+
+ 364   2          *pdisp = 0x00;
+ 365   2          pdisp++;
+ 366   2      
+ 367   2          for(i=0; i<5; i++, pdisp++) {
+ 368   3            *pdisp = temperature_font[5*(temp%10)+i];
+ 369   3          }
+ 370   2        }
+ 371   1        *pdisp = 0x00;
+ 372   1        pdisp++;
+ 373   1        *pdisp = 0x00;
+ 374   1        pdisp++;
+ 375   1        for(i=0; i<9; i++, pdisp++) {
+ 376   2          *pdisp = temperature_font[55+i];
+ 377   2        }
+ 378   1      
+ 379   1        return;
+ 380   1      }
+ 381          
+ 382          void showPressure(void)
+ 383          {
+ 384   1        static uint8_t buf[4];
+ 385   1        uint8_t code *sptr;
+ 386   1        int8_t i;
+ 387   1        int16_t pres = bmxx80GetPressure();
+ 388   1      
+ 389   1        for (i = 0; i < 4; i++)
+ 390   1          buf[i] = 0;
+ 391   1      
+ 392   1        i=3;
+ 393   1        
+ 394   1        while (pres > 0 || i > 0) {
+ 395   2          buf[i] = pres % 10;
+ 396   2          i--;
+ 397   2          pres /= 10;
+ 398   2        }
+ 399   1      
+ 400   1        for(i=0; i<4; i++, pdisp++) {
+ 401   2          sptr = fptr + (4*buf[0]+i);
+ 402   2          *pdisp = *sptr;
+ 403   2        }
+ 404   1        *pdisp = 0x00;
+ 405   1        pdisp++;
+ 406   1        for(i=0; i<4; i++, pdisp++) {
+ 407   2          sptr = fptr + (4*buf[1]+i);
+ 408   2          *pdisp = *sptr;
+ 409   2        }
+ 410   1        *pdisp = 0x00;
+ 411   1        pdisp++;
+ 412   1        for(i=0; i<4; i++, pdisp++) {
+ 413   2          sptr = fptr + (4*buf[2]+i);
+ 414   2          *pdisp = *sptr;
+ 415   2        }
+ 416   1        *pdisp = 0x00;
+ 417   1        pdisp++;
+ 418   1        *pdisp = 0x03;
+ 419   1        pdisp++;
+ 420   1        *pdisp = 0x03;
+ 421   1        pdisp++;
+ 422   1        *pdisp = 0x00;
+ 423   1        pdisp++;
+ 424   1        for(i=0; i<4; i++, pdisp++) {
+ 425   2          sptr = fptr + (4*buf[3]+i);
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 8   
+
+ 426   2          *pdisp = *sptr;
+ 427   2        }
+ 428   1      
+ 429   1        return;
+ 430   1      }
+ 431          
+ 432          void showHumidity(void)
+ 433          {
+ 434   1        static uint8_t buf[5];
+ 435   1        uint8_t code *sptr;
+ 436   1        int8_t i;
+ 437   1        uint16_t humi = 0;
+ 438   1        if(si7021SensorExists()) {
+ 439   2          humi = si7021GetHumidity();
+ 440   2        }
+ 441   1        else if(bmxx80HaveSensor()==BME280_CHIP_ID){
+ 442   2          humi = bme280GetHumidity();
+ 443   2        }
+ 444   1      
+ 445   1        for (i = 0; i < 5; i++)
+ 446   1          buf[i] = 0;
+ 447   1      
+ 448   1        i=4;
+ 449   1        
+ 450   1        while (humi > 0 || i > 0) {
+ 451   2          buf[i] = humi % 10;
+ 452   2          i--;
+ 453   2          humi /= 10;
+ 454   2        }
+ 455   1        
+ 456   1        if( buf[0] == 0 ) {
+ 457   2          for(i=0; i<4; i++, pdisp++) {
+ 458   3            sptr = fptr + (4*buf[1]+i);
+ 459   3            *pdisp = *sptr;
+ 460   3          }
+ 461   2          *pdisp = 0x00;
+ 462   2          pdisp++;
+ 463   2          for(i=0; i<4; i++, pdisp++) {
+ 464   3            sptr = fptr + (4*buf[2]+i);
+ 465   3            *pdisp = *sptr;
+ 466   3          }
+ 467   2          *pdisp = 0x00;
+ 468   2          pdisp++;
+ 469   2          *pdisp = 0x03;
+ 470   2          pdisp++;
+ 471   2          *pdisp = 0x00;
+ 472   2          pdisp++;
+ 473   2          for(i=0; i<4; i++, pdisp++) {
+ 474   3            sptr = fptr + (4*buf[3]+i);
+ 475   3            *pdisp = *sptr;
+ 476   3          }
+ 477   2        }
+ 478   1        else {
+ 479   2          *pdisp = 0x00;
+ 480   2          pdisp++;
+ 481   2          for(i=0; i<4; i++, pdisp++) {
+ 482   3            sptr = fptr + (4*buf[0]+i);
+ 483   3            *pdisp = *sptr;
+ 484   3          }
+ 485   2          *pdisp = 0x00;
+ 486   2          pdisp++;
+ 487   2          for(i=0; i<4; i++, pdisp++) {
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 9   
+
+ 488   3            sptr = fptr + (4*buf[1]+i);
+ 489   3            *pdisp = *sptr;
+ 490   3          }
+ 491   2          *pdisp = 0x00;
+ 492   2          pdisp++;
+ 493   2          for(i=0; i<4; i++, pdisp++) {
+ 494   3            sptr = fptr + (4*buf[2]+i);
+ 495   3            *pdisp = *sptr;
+ 496   3          }
+ 497   2          *pdisp = 0x00;
+ 498   2          pdisp++;
+ 499   2        }
+ 500   1        *pdisp = 0x00;
+ 501   1        pdisp++;
+ 502   1        *pdisp = 0x62;
+ 503   1        pdisp++;
+ 504   1        *pdisp = 0x64;
+ 505   1        pdisp++;
+ 506   1        *pdisp = 0x08;
+ 507   1        pdisp++;
+ 508   1        *pdisp = 0x13;
+ 509   1        pdisp++;
+ 510   1        *pdisp = 0x23;
+ 511   1        pdisp++;
+ 512   1      
+ 513   1        return;
+ 514   1      }
+ 515          
+ 516          void autoBright(void)
+ 517          {
+ 518   1        if( rtc.hour < 24 && eep.bright == 6 ) {
+ 519   2          displayBright = (rtc.hour&0x01)?(hourbright[rtc.hour>>1] & 0x0F):((hourbright[rtc.hour>>1]>>4 )& 0x0F);
+ 520   2        }
+ 521   1      
+ 522   1        return;
+ 523   1      }
+ 524          
+ 525          void showMainScreen(void)
+ 526          {
+ 527   1        pdisp = &disp[0];
+ 528   1        updateFont();
+ 529   1        autoBright();
+ 530   1      
+ 531   1        switch(widgetNumber) {
+ 532   2          case WI_TIME: { showTime(); break;}
+ 533   2          case WI_DATE: { showDate(); break;}
+ 534   2          case WI_WEEK: { showDayWeek(); break;}
+ 535   2          case WI_TEMP: { showTemperature(); break;}
+ 536   2          case WI_PRES: { showPressure(); break;}
+ 537   2          case WI_HUMI: { showHumidity(); break;}
+ 538   2          case WI_HOLY: { showRenderBuffer(); break;}
+ 539   2          default: { showTime(); break;}
+ 540   2        }
+ 541   1      
+ 542   1        return;
+ 543   1      }
+ 544          
+ 545          void checkParam(int8_t *param, int8_t diff, int8_t paramMin, int8_t paramMax)
+ 546          {
+ 547   1        *param += diff;
+ 548   1      
+ 549   1        if (*param > paramMax)
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 10  
+
+ 550   1          *param = paramMin;
+ 551   1        if (*param < paramMin)
+ 552   1          *param = paramMax;
+ 553   1      
+ 554   1        return;
+ 555   1      }
+ 556          
+ 557          void changeMenu(int8_t diff)
+ 558          {
+ 559   1        checkParam(&menuNumber, diff, MODE_EDIT_TIME, MODE_EDIT_TEMP_COEF);
+ 560   1      
+ 561   1        return;
+ 562   1      }
+ 563          
+ 564          void showMenu(void)
+ 565          {
+ 566   1        uint8_t i, code *sptr;
+ 567   1      
+ 568   1        switch(menuNumber) {
+ 569   2          case MODE_EDIT_TIME: sptr = &pic_Time[0];break;
+ 570   2          case MODE_EDIT_DATE: sptr = &pic_Date[0];break;
+ 571   2          case MODE_EDIT_ALARM: sptr = &pic_Alarm[0];break;
+ 572   2          case MODE_EDIT_HOURSIGNAL: sptr = &pic_HourSignal[0];break;
+ 573   2          case MODE_EDIT_FONT: sptr = &pic_Font[0];break;
+ 574   2          case MODE_EDIT_DISP: sptr = &pic_Disp[0];break;
+ 575   2          case MODE_EDIT_DOT: sptr = &pic_Dot[0];break;
+ 576   2          case MODE_EDIT_BRIGHT: sptr = &pic_Bright[0];break;
+ 577   2          case MODE_EDIT_TIME_COEF: sptr = &pic_TimeCoef[0];break;
+ 578   2          case MODE_EDIT_TEMP_COEF: sptr = &pic_TempCoef[0];break;
+ 579   2          default:break;
+ 580   2        }
+ 581   1        for(i=0; i<DISPLAYSIZE; i++, sptr++) {
+ 582   2          disp[i] = *sptr;
+ 583   2        }
+ 584   1      
+ 585   1        return;
+ 586   1      }
+ 587          
+ 588          void showTimeEdit(void)
+ 589          {
+ 590   1        uint8_t i;
+ 591   1        bit flash;
+ 592   1      
+ 593   1        pdisp = &disp[0];
+ 594   1        updateFont();
+ 595   1      
+ 596   1        if (refcount < 15) { flash = 0; }
+ 597   1        else if (refcount < 45) { flash = 1; }
+ 598   1        else { flash = 0; }
+ 599   1      
+ 600   1        if(rtc.etm == RTC_SEC) {
+ 601   2          for(i=0; i<9; i++, pdisp++) {
+ 602   3            *pdisp = 0x00;
+ 603   3          }
+ 604   2          for(i=0; i<4; i++, pdisp++) {
+ 605   3            *pdisp = dot_font[4*3+i];
+ 606   3          }
+ 607   2          showNumber(rtc.sec, !((rtc.etm != RTC_SEC)||(flash && (rtc.etm == RTC_SEC))), 0);
+ 608   2        }
+ 609   1        else {
+ 610   2          showNumber(rtc.hour, !((rtc.etm != RTC_HOUR)||(flash && (rtc.etm == RTC_HOUR))), 0);
+ 611   2          for(i=0; i<4; i++, pdisp++) {
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 11  
+
+ 612   3            *pdisp = dot_font[4*3+i];
+ 613   3          }
+ 614   2          showNumber(rtc.min, !((rtc.etm != RTC_MIN)||(flash && (rtc.etm == RTC_MIN))), 0);
+ 615   2        }
+ 616   1      
+ 617   1        return;
+ 618   1      }
+ 619          
+ 620          void showDateEdit(void)
+ 621          {
+ 622   1        uint8_t i;
+ 623   1        bit flash;
+ 624   1      
+ 625   1        pdisp = &disp[0];
+ 626   1        updateFont();
+ 627   1      
+ 628   1        if (refcount < 15) { flash = 0; }
+ 629   1        else if (refcount < 45) { flash = 1; }
+ 630   1        else { flash = 0; }
+ 631   1      
+ 632   1        if(rtc.etm == RTC_YEAR) {
+ 633   2          *pdisp = 0x00;
+ 634   2          pdisp++;
+ 635   2          *pdisp = 0x00;
+ 636   2          pdisp++;
+ 637   2          showNumber(20, 0, 0);
+ 638   2          *pdisp = 0x00;
+ 639   2          pdisp++;
+ 640   2          showNumber(rtc.year, !((rtc.etm != RTC_YEAR)||(flash && (rtc.etm == RTC_YEAR))), 0);
+ 641   2          *pdisp = 0x00;
+ 642   2          pdisp++;
+ 643   2        }
+ 644   1        else {
+ 645   2          showNumber(rtc.date, !((rtc.etm != RTC_DATE)||(flash && (rtc.etm == RTC_DATE))), 1);
+ 646   2          for(i=0; i<4; i++, pdisp++) {
+ 647   3            *pdisp = dot_font[4+i];
+ 648   3          }
+ 649   2          showNumber(rtc.month, !((rtc.etm != RTC_MONTH)||(flash && (rtc.etm == RTC_MONTH))), 0);
+ 650   2        }
+ 651   1      
+ 652   1        return;
+ 653   1      }
+ 654          
+ 655          void showAlarmEdit(void)
+ 656          {
+ 657   1        uint8_t i, j, code *sptr;
+ 658   1        bit flash;
+ 659   1      
+ 660   1        pdisp = &disp[0];
+ 661   1        updateFont();
+ 662   1      
+ 663   1        if( alarm.etm == ALARM_ON) {
+ 664   2          if(alarm.on) {
+ 665   3            sptr = &pic_On[0];
+ 666   3          }
+ 667   2          else {
+ 668   3            sptr = &pic_Off[0];
+ 669   3          }
+ 670   2          for(i=0; i<DISPLAYSIZE; i++, sptr++) {
+ 671   3            disp[i] = *sptr;
+ 672   3          }
+ 673   2        }
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 12  
+
+ 674   1        else if((alarm.etm == ALARM_HOUR)||(alarm.etm == ALARM_MIN)) {
+ 675   2          if (refcount < 15) { flash = 0; }
+ 676   2          else if (refcount < 45) { flash = 1; }
+ 677   2          else { flash = 0; }
+ 678   2      
+ 679   2          showNumber(alarm.hour, !((alarm.etm != ALARM_HOUR)||(flash && (alarm.etm == ALARM_HOUR))), 0);
+ 680   2          for(i=0; i<4; i++, pdisp++) {
+ 681   3            *pdisp = dot_font[4*3+i];
+ 682   3          }
+ 683   2          showNumber(alarm.min, !((alarm.etm != ALARM_MIN)||(flash && (alarm.etm == ALARM_MIN))), 0);
+ 684   2        }
+ 685   1        else {
+ 686   2          if (refcount < 27) { flash = 0; }
+ 687   2          else if (refcount < 33) { flash = 1; }
+ 688   2          else { flash = 0; }
+ 689   2      
+ 690   2          switch(alarm.etm) {
+ 691   3            case ALARM_MON: {sptr = &pic_alarm_mon[0]; break; }
+ 692   3            case ALARM_TUE: {sptr = &pic_alarm_tue[0]; break; }
+ 693   3            case ALARM_WED: {sptr = &pic_alarm_wed[0]; break; }
+ 694   3            case ALARM_THU: {sptr = &pic_alarm_thu[0]; break; }
+ 695   3            case ALARM_FRI: {sptr = &pic_alarm_fri[0]; break; }
+ 696   3            case ALARM_SAT: {sptr = &pic_alarm_sat[0]; break; }
+ 697   3            case ALARM_SUN: {sptr = &pic_alarm_sun[0]; break; }
+ 698   3            default: break;
+ 699   3          }
+ 700   2      
+ 701   2          for(i=0; i<DISPLAYSIZE; i++, sptr++) {
+ 702   3            j = 0;
+ 703   3            switch(i) {
+ 704   4              case 1:
+ 705   4              case 2: {
+ 706   5                if(((alarm.etm != ALARM_MON)&&alarm.mon)||((alarm.etm == ALARM_MON)&&((alarm.mon && !flash)||(!alarm.
+             -mon && flash)))) j = 1;
+ 707   5                break;
+ 708   5              }
+ 709   4              case 4:
+ 710   4              case 5: {
+ 711   5                if(((alarm.etm != ALARM_TUE)&&alarm.tue)||((alarm.etm == ALARM_TUE)&&((alarm.tue && !flash)||(!alarm.
+             -tue && flash)))) j = 1;
+ 712   5                break;
+ 713   5              }
+ 714   4              case 7:
+ 715   4              case 8: {
+ 716   5                if(((alarm.etm != ALARM_WED)&&alarm.wed)||((alarm.etm == ALARM_WED)&&((alarm.wed && !flash)||(!alarm.
+             -wed && flash)))) j = 1;
+ 717   5                break;
+ 718   5              }
+ 719   4              case 10:
+ 720   4              case 11: {
+ 721   5                if(((alarm.etm != ALARM_THU)&&alarm.thu)||((alarm.etm == ALARM_THU)&&((alarm.thu && !flash)||(!alarm.
+             -thu && flash)))) j = 1;
+ 722   5                break;
+ 723   5              }
+ 724   4              case 13:
+ 725   4              case 14: {
+ 726   5                if(((alarm.etm != ALARM_FRI)&&alarm.fri)||((alarm.etm == ALARM_FRI)&&((alarm.fri && !flash)||(!alarm.
+             -fri && flash)))) j = 1;
+ 727   5                break;
+ 728   5              }
+ 729   4              case 16:
+ 730   4              case 17: {
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 13  
+
+ 731   5                if(((alarm.etm != ALARM_SAT)&&alarm.sat)||((alarm.etm == ALARM_SAT)&&((alarm.sat && !flash)||(!alarm.
+             -sat && flash)))) j = 1;
+ 732   5                break;
+ 733   5              }
+ 734   4              case 19:
+ 735   4              case 20: {
+ 736   5                if(((alarm.etm != ALARM_SUN)&&alarm.sun)||((alarm.etm == ALARM_SUN)&&((alarm.sun && !flash)||(!alarm.
+             -sun && flash)))) j = 1;
+ 737   5                break;
+ 738   5              }
+ 739   4            }
+ 740   3            disp[i] = *sptr | j;
+ 741   3          }
+ 742   2        }
+ 743   1      
+ 744   1        return;
+ 745   1      }
+ 746          
+ 747          void changeFont(int8_t diff)
+ 748          {
+ 749   1        checkParam(&eep.fontMode, diff, eepMin.fontMode/*0*/, eepMax.fontMode/*4*/);
+ 750   1      
+ 751   1        return;
+ 752   1      }
+ 753          
+ 754          void showFontEdit(void)
+ 755          {
+ 756   1        pdisp = &disp[0];
+ 757   1        updateFont();
+ 758   1        showTime();
+ 759   1      
+ 760   1        return;
+ 761   1      }
+ 762          
+ 763          void changeDisp(int8_t diff)
+ 764          {
+ 765   1        checkParam(&eep.dispMode, diff, eepMin.dispMode/*1*/, eepMax.dispMode/*5*/);
+ 766   1      
+ 767   1        return;
+ 768   1      }
+ 769          
+ 770          void showDispEdit(void)
+ 771          {
+ 772   1        uint8_t i;
+ 773   1      
+ 774   1        pdisp = &disp[0];
+ 775   1      
+ 776   1        for(i=0; i<16; i++, pdisp++) {
+ 777   2          *pdisp = pic_Type[i];
+ 778   2        }
+ 779   1        *pdisp = 0x00;
+ 780   1        pdisp++;
+ 781   1      
+ 782   1        for(i=0; i<5; i++, pdisp++) {
+ 783   2          *pdisp = temperature_font[5*eep.dispMode+i];
+ 784   2        }
+ 785   1      
+ 786   1        return;
+ 787   1      }
+ 788          
+ 789          void changeDot(int8_t diff)
+ 790          {
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 14  
+
+ 791   1        checkParam(&eep.dotMode, diff, eepMin.dotMode/*0*/, eepMax.dotMode/*4*/);
+ 792   1      
+ 793   1        return;
+ 794   1      }
+ 795          
+ 796          void showDotEdit(void)
+ 797          {
+ 798   1        pdisp = &disp[0];
+ 799   1        updateFont();
+ 800   1      
+ 801   1        showTime();
+ 802   1      
+ 803   1        return;
+ 804   1      }
+ 805          
+ 806          void changeBright(int8_t diff)
+ 807          {
+ 808   1        checkParam(&eep.bright, diff, eepMin.bright/*0*/, eepMax.bright/*6*/);
+ 809   1        displayBright = eep.bright;
+ 810   1        autoBright();
+ 811   1      
+ 812   1        return;
+ 813   1      }
+ 814          
+ 815          void showBrightEdit(void)
+ 816          {
+ 817   1        uint8_t i;
+ 818   1      
+ 819   1        pdisp = &disp[0];
+ 820   1      
+ 821   1        for(i=0; i<16; i++, pdisp++) {
+ 822   2          *pdisp = pic_BrEdit[i];
+ 823   2        }
+ 824   1        *pdisp = 0x00;
+ 825   1        pdisp++;
+ 826   1      
+ 827   1        for(i=0; i<5; i++, pdisp++) {
+ 828   2          *pdisp = temperature_font[5*eep.bright+i];
+ 829   2        }
+ 830   1      
+ 831   1        return;
+ 832   1      }
+ 833          
+ 834          void changeHourSignal(int8_t diff)
+ 835          {
+ 836   1        checkParam(&eep.hourSignal, diff, eepMin.hourSignal/*0*/, eepMax.hourSignal/*1*/);
+ 837   1      
+ 838   1        return;
+ 839   1      }
+ 840          
+ 841          void showHourSignalEdit(void)
+ 842          {
+ 843   1        uint8_t i, code *sptr;
+ 844   1      
+ 845   1        if(eep.hourSignal) {
+ 846   2          sptr = &pic_On[0];
+ 847   2        }
+ 848   1        else {
+ 849   2          sptr = &pic_Off[0];
+ 850   2        }
+ 851   1        for(i=0; i<DISPLAYSIZE; i++, sptr++) {
+ 852   2          disp[i] = *sptr;
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 15  
+
+ 853   2        }
+ 854   1      
+ 855   1        return;
+ 856   1      }
+ 857          
+ 858          void changeTimeCoef(int8_t diff)
+ 859          {
+ 860   1        checkParam(&eep.timecoef, diff, eepMin.timecoef/*-128*/, eepMax.timecoef/*127*/);
+ 861   1      
+ 862   1        return;
+ 863   1      }
+ 864          
+ 865          void showTimeCoefEdit(void)
+ 866          {
+ 867   1        static uint8_t buf[3];
+ 868   1        uint8_t code *sptr;
+ 869   1        int8_t i;
+ 870   1        uint8_t coef;
+ 871   1        bit sign;
+ 872   1      
+ 873   1        pdisp = &disp[0];
+ 874   1        sign = (eep.timecoef >= 0)? 0: 1;
+ 875   1        if(sign) {
+ 876   2          coef = -eep.timecoef;
+ 877   2        }
+ 878   1        else {
+ 879   2          coef = eep.timecoef;
+ 880   2        }
+ 881   1        
+ 882   1        for (i = 0; i < 3; i++)
+ 883   1          buf[i] = 0;
+ 884   1      
+ 885   1        i=2;
+ 886   1        
+ 887   1        while (coef > 0 || i > 0) {
+ 888   2          buf[i] = coef % 10;
+ 889   2          i--;
+ 890   2          coef /= 10;
+ 891   2        }
+ 892   1      
+ 893   1        coef = 3;
+ 894   1        if( !sign )
+ 895   1          coef +=5;
+ 896   1        if( buf[0] == 0 ) {
+ 897   2          coef += 5;
+ 898   2          if( buf[1] == 0 ) {
+ 899   3            coef += 5;
+ 900   3          }
+ 901   2        }
+ 902   1      
+ 903   1        for(i=0; i<coef; i++, pdisp++) {
+ 904   2          *pdisp = 0x00;
+ 905   2        }
+ 906   1        
+ 907   1        if( sign ) {
+ 908   2          for(i=0; i<4; i++, pdisp++) {
+ 909   3            *pdisp = 0x08;
+ 910   3          }
+ 911   2      
+ 912   2          *pdisp = 0x00;
+ 913   2          pdisp++;
+ 914   2        }
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 16  
+
+ 915   1      
+ 916   1        if(buf[0] > 0 ) {
+ 917   2          for(i=0; i<4; i++, pdisp++) {
+ 918   3            sptr = fptr + (4*buf[0]+i);
+ 919   3            *pdisp = *sptr;
+ 920   3          }
+ 921   2      
+ 922   2          *pdisp = 0x00;
+ 923   2          pdisp++;
+ 924   2        }
+ 925   1      
+ 926   1        if((buf[0] > 0 )||(buf[1] > 0 )) {
+ 927   2          for(i=0; i<4; i++, pdisp++) {
+ 928   3            sptr = fptr + (4*buf[1]+i);
+ 929   3            *pdisp = *sptr;
+ 930   3          }
+ 931   2      
+ 932   2          *pdisp = 0x00;
+ 933   2          pdisp++;
+ 934   2        }
+ 935   1      
+ 936   1        for(i=0; i<4; i++, pdisp++) {
+ 937   2          sptr = fptr + (4*buf[2]+i);
+ 938   2          *pdisp = *sptr;
+ 939   2        }
+ 940   1      
+ 941   1        return;
+ 942   1      }
+ 943          
+ 944          void changeTempCoef(int8_t diff)
+ 945          {
+ 946   1        checkParam(&eep.tempcoef, diff, eepMin.tempcoef/*-9*/, eepMax.tempcoef/*9*/);
+ 947   1      
+ 948   1        return;
+ 949   1      }
+ 950          
+ 951          void showTempCoefEdit(void)
+ 952          {
+ 953   1        pdisp = &disp[0];
+ 954   1      
+ 955   1        showTemperature();
+ 956   1      
+ 957   1        return;
+ 958   1      }
+ 959          
+ 960          void showRenderBuffer(void)
+ 961          {
+ 962   1        uint8_t i;
+ 963   1      
+ 964   1        int16_t ind = scroll_index - DISPLAYSIZE;
+ 965   1        if( scroll_index > (render_buffer_size + DISPLAYSIZE )) {
+ 966   2          scroll_index = -1;
+ 967   2          widgetNumber = 0; screenTime = 0;
+ 968   2        }
+ 969   1      
+ 970   1        for(i=0; i<DISPLAYSIZE; i++) {
+ 971   2          if(( ind + i >= 0 )&&(ind + i < render_buffer_size )) {
+ 972   3            disp[i] = render_buffer[(uint8_t)(ind + i)];
+ 973   3          }
+ 974   2          else {
+ 975   3            disp[i] = 0x00;
+ 976   3          }
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 17  
+
+ 977   2        }
+ 978   1      
+ 979   1        return;
+ 980   1      }
+ 981          
+ 982          void writeRenderBuffer(uint8_t value)
+ 983          {
+ 984   1        if ( render_buffer_size < RENDSERBUFFERSIZE) {
+ 985   2          render_buffer[render_buffer_size++] = value;
+ 986   2        }
+ 987   1      
+ 988   1        return;
+ 989   1      }
+ 990          
+ 991          void renderHoliday(uint8_t length, char *str)
+ 992          {
+ 993   1        uint8_t i, j, t, c;
+ 994   1      
+ 995   1        render_buffer_size = 0;
+ 996   1      
+ 997   1        for(i=0; i < (length - 1); i++, str++) {
+ 998   2          c = *str;
+ 999   2          if( c >= 0xA0 ) {
+1000   3            c -= 0x40;
+1001   3          }
+1002   2          else if( c >= 0x20 ) {
+1003   3            c -= 0x20;
+1004   3          }
+1005   2          else {
+1006   3            c = 0x1F;
+1007   3          }
+1008   2          for(j=0; j<5; j++) {
+1009   3            t = font_cp1251_07[5*c+j];
+1010   3            if( t != VOID ) {
+1011   4              writeRenderBuffer(t);
+1012   4            }
+1013   3          }
+1014   2          writeRenderBuffer(0x00);
+1015   2        }
+1016   1      
+1017   1        return;
+1018   1      }
+1019          /*
+1020          static char *mkNumberString(int16_t value, uint8_t width, uint8_t lead)
+1021          {
+1022            static char strbuf[8];
+1023          
+1024            uint8_t sign = lead;
+1025            int8_t pos;
+1026          
+1027            if (value < 0) {
+1028              sign = '-';
+1029              value = -value;
+1030            }
+1031          
+1032            // Clear buffer and go to it's tail
+1033            for (pos = 0; pos < width; pos++)
+1034              strbuf[pos] = lead;
+1035            strbuf[pos--] = '\0';
+1036          
+1037            // Fill buffer from right to left
+1038            while (value > 0 || pos > width - 2) {
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 18  
+
+1039              strbuf[pos] = value % 10 + 0x30;
+1040              pos--;
+1041              value /= 10;
+1042            }
+1043          
+1044            if (pos >= 0)
+1045              strbuf[pos] = sign;
+1046          
+1047            return strbuf;
+1048          }
+1049          */
+1050          
+1051          #ifdef _DEBUG_
+              
+              void showTestRender(void)
+              {
+                /*
+                 э = \xFD
+                */
+                //char test[] = "TEST RENDER!!! Proverka???\x63";
+                //char test[] = "С Новым Годом!!!";
+                //char test[] = "ШЩЪЫЬЭЮЯшщъыь\xFDюя";
+                char code test[] = "Проверка рендеринга, на длину строки.";
+                uint8_t i,j,t;
+                uint8_t c;
+              
+                scroll_index = 0;
+                for(i=0; i < strlen(test); i++) {
+                  c = test[i];
+                  if( c >= 0xA0 ) {
+                    c -= 0x40;
+                  }
+                  else if( c >= 0x20 ) {
+                    c -= 0x20;
+                  }
+                  else {
+                    c = 0x1F;
+                  }
+                  for(j=0; j<5; j++) {
+                    t = font_cp1251_07[5*c+j];
+                    if( t != VOID ) {
+                      writeRenderBuffer(t);
+                    }
+                  }
+                  writeRenderBuffer(0x00);
+                }
+              
+                return;
+              }
+              
+              #endif
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   6573    ----
+   CONSTANT SIZE    =    638    ----
+   XDATA SIZE       =    254    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     51      40
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      3       4
+END OF MODULE INFORMATION.
+
+C51 COMPILER V9.59.0.0   DISPLAY                                                           01/05/2024 10:04:33 PAGE 19  
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
