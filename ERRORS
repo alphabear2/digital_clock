@@ -1,0 +1,49 @@
+holidays.c(99): error C141: syntax error near ')', expected 'bit'
+holidays.c(99): error C141: syntax error near '}', expected 'sizeof'
+holidays.c(99): error C307: macro 'hAWN': parameter count mismatch
+holidays.c(100): error C141: syntax error near '+', expected ')'
+holidays.c(100): error C231: 'hd_05_03_THU_vishivankaday': redefinition
+holidays.c(100): error C307: macro 'hAWN': parameter count mismatch
+holidays.c(101): error C141: syntax error near '+', expected ')'
+holidays.c(101): error C231: 'hd_06_03_SUN_fatherday': redefinition
+holidays.c(101): error C307: macro 'hAWN': parameter count mismatch
+holidays.c(102): error C231: 'FRY': redefinition
+holidays.c(102): error C231: 'hd_07_lastfriday': redefinition
+holidays.c(102): error C141: syntax error near '/', expected ';'
+holidays.c(102): error C136: invalid dimension size: [0]
+holidays.c(102): error C231: 'hd_07_lastfriday': redefinition
+holidays.c(102): error C141: syntax error near '&', expected 'hdata'
+holidays.c(102): error C231: 'hd_07_lastfriday': redefinition
+holidays.c(103): error C141: syntax error near '+', expected ')'
+holidays.c(103): error C231: 'SUN': redefinition
+holidays.c(103): error C231: 'hd_08_02_SUM_buildersday': redefinition
+holidays.c(103): error C141: syntax error near '/', expected ';'
+holidays.c(103): error C136: invalid dimension size: [0]
+holidays.c(103): error C231: 'hd_08_02_SUM_buildersday': redefinition
+holidays.c(103): error C141: syntax error near '&', expected 'hdata'
+holidays.c(103): error C231: 'hd_08_02_SUM_buildersday': redefinition
+holidays.c(104): error C141: syntax error near '+', expected ')'
+holidays.c(104): error C231: 'FRY': redefinition
+holidays.c(104): error C231: 'hd_08_beerday': redefinition
+holidays.c(104): error C141: syntax error near '/', expected ';'
+holidays.c(104): error C136: invalid dimension size: [0]
+holidays.c(104): error C231: 'hd_08_beerday': redefinition
+holidays.c(104): error C141: syntax error near '&', expected 'hdata'
+holidays.c(104): error C231: 'hd_08_beerday': redefinition
+holidays.c(105): error C141: syntax error near '+', expected ')'
+holidays.c(105): error C231: 'SUN': redefinition
+holidays.c(105): error C231: 'hd_10_01_SUN_educatorday': redefinition
+holidays.c(105): error C141: syntax error near '/', expected ';'
+holidays.c(105): error C136: invalid dimension size: [0]
+holidays.c(105): error C231: 'hd_10_01_SUN_educatorday': redefinition
+holidays.c(105): error C141: syntax error near '&', expected 'hdata'
+holidays.c(105): error C231: 'hd_10_01_SUN_educatorday': redefinition
+holidays.c(106): error C141: syntax error near '+', expected ')'
+holidays.c(106): error C231: 'SAT': redefinition
+holidays.c(106): error C231: 'hd_11_04_SAT_holodomorsday': redefinition
+holidays.c(106): error C141: syntax error near '/', expected ';'
+holidays.c(106): error C136: invalid dimension size: [0]
+holidays.c(106): error C231: 'hd_11_04_SAT_holodomorsday': redefinition
+holidays.c(106): error C141: syntax error near '&', expected 'hdata'
+holidays.c(106): error C231: 'hd_11_04_SAT_holodomorsday': redefinition
+holidays.c(109): error C231: 'wdays': redefinition
